@@ -1,0 +1,50 @@
+{
+	"name": "decorapi",
+	"version": "0.1.0",
+	"description": "Decorator-based isomorphic HTTP API wrapper for TypeScript.",
+	"type": "module",
+	"main": "dist/index.js",
+	"module": "dist/index.mjs",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "node build.js && tsc --emitDeclarationOnly --declaration --outDir dist",
+		"dev": "node build.js --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "node --experimental-vm-modules node_modules/.bin/jest",
+		"test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
+		"lint": "eslint src",
+		"lint:fix": "eslint src --fix",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"prepublishOnly": "npm run build"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@types/jest": "^30.0.0",
+		"@types/node": "^25.5.0",
+		"esbuild": "^0.25.0",
+		"eslint": "^10.1.0",
+		"eslint-config-prettier": "^10.1.8",
+		"jest": "^30.3.0",
+		"prettier": "^3.8.1",
+		"ts-jest": "^29.4.6",
+		"typescript": "^5.8.0",
+		"typescript-eslint": "^8.57.1"
+	},
+	"keywords": [],
+	"license": "MIT",
+	"author": {
+		"email": "glinto@gmail.com",
+		"name": "Csaba Sipőcz"
+	}
+}
