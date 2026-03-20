@@ -10,8 +10,8 @@ jobs:
     name: Build & publish to npm
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed to create GitHub Release
-      id-token: write   # needed for npm provenance
+      contents: write # needed to create GitHub Release
+      id-token: write # needed for npm provenance
 
     steps:
       - name: Checkout

@@ -54,7 +54,6 @@ export class MyAPI {
 
 > ⚠️ **Important**: If your method body uses Node.js-only dependencies, use dynamic imports to prevent them from appearing in client bundles. See [Server-only code patterns](#server-only-code-patterns).
 
-
 ### 3. Client
 
 ```typescript
@@ -131,7 +130,7 @@ Dynamically import server-only modules inside the method:
 async query(req: HTTPRequest<QueryReq>): Promise<QueryRes> {
   // On client: method replaced with fetch, never reaches this code
   // On server: imports happen at runtime
-  
+
   const { database } = await import('my-database-sdk');
   const result = await database.query(req.body.sql);
   return result;
@@ -176,7 +175,7 @@ async admin(req: HTTPRequest<Req>): Promise<Res> {
     // Client-side code (browser only) —  bundler may omit dead branch
     throw new Error('Server-only endpoint');
   }
-  
+
   // Server-side code
   const fs = await import('fs');
   return fs.promises.readFile(req.body.path);
@@ -190,15 +189,17 @@ async admin(req: HTTPRequest<Req>): Promise<Res> {
 If you control the bundler, mark Node.js packages as external:
 
 **esbuild:**
+
 ```javascript
 esbuild.build({
-  entry: 'src/index.ts',
-  bundle: true,
-  packages: 'external',  // ← don't bundle npm packages
+	entry: 'src/index.ts',
+	bundle: true,
+	packages: 'external', // ← don't bundle npm packages
 });
 ```
 
 **Webpack:**
+
 ```javascript
 externals: {
   'my-database-sdk': 'commonjs my-database-sdk',

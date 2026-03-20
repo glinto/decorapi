@@ -12,15 +12,15 @@ Project context for AI assistants.
 
 ## Tech stack
 
-| Tool | Version | Role |
-|---|---|---|
-| TypeScript | ^5.8 | Language — TC39 Stage-3 decorators (no `experimentalDecorators`) |
-| esbuild | ^0.25 | Bundler — produces CJS (`dist/index.js`) and ESM (`dist/index.mjs`) |
-| tsc | via typescript | Type declarations only (`--emitDeclarationOnly`) |
-| Jest + ts-jest | ^30 / ^29 | Testing — ESM mode via `--experimental-vm-modules` |
-| ESLint | ^10 | Linting — flat config (`eslint.config.js`), no `tseslint.config()` wrapper |
-| Prettier | ^3 | Formatting — `.prettierrc.json` |
-| Node.js | ≥18 | Runtime — native `fetch`, ES2022 |
+| Tool           | Version        | Role                                                                       |
+| -------------- | -------------- | -------------------------------------------------------------------------- |
+| TypeScript     | ^5.8           | Language — TC39 Stage-3 decorators (no `experimentalDecorators`)           |
+| esbuild        | ^0.25          | Bundler — produces CJS (`dist/index.js`) and ESM (`dist/index.mjs`)        |
+| tsc            | via typescript | Type declarations only (`--emitDeclarationOnly`)                           |
+| Jest + ts-jest | ^30 / ^29      | Testing — ESM mode via `--experimental-vm-modules`                         |
+| ESLint         | ^10            | Linting — flat config (`eslint.config.js`), no `tseslint.config()` wrapper |
+| Prettier       | ^3             | Formatting — `.prettierrc.json`                                            |
+| Node.js        | ≥18            | Runtime — native `fetch`, ES2022                                           |
 
 ## Commands
 
@@ -88,11 +88,11 @@ No `NPM_TOKEN` secret needed — npm OIDC Trusted Publishing is configured on th
 
 ```json
 {
-  ".": {
-    "types": "./dist/index.d.ts",
-    "import": "./dist/index.mjs",
-    "require": "./dist/index.js"
-  }
+	".": {
+		"types": "./dist/index.d.ts",
+		"import": "./dist/index.mjs",
+		"require": "./dist/index.js"
+	}
 }
 ```
 
