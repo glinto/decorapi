@@ -19,9 +19,9 @@ export function endpoint<TReq, TRes>(
 	guardRes: TypeGuard<TRes>,
 ) {
 	return function (
-		originalFn: Function,
+		originalFn: (...args: unknown[]) => unknown,
 		context: ClassMethodDecoratorContext,
-	): any {
+	): ((...args: unknown[]) => Promise<unknown>) {
 		const methodName = String(context.name);
 
 		// 1. Store metadata in the registry (keyed on the prototype at apply-time).
