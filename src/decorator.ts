@@ -1,4 +1,4 @@
-import type { HttpMethod, TypeGuard } from './types.js';
+import type { HttpMethod, TypeGuard, HTTPRequest } from './types.js';
 import { registerEndpoint } from './registry.js';
 import { getConfig } from './config.js';
 import { clientHandler } from './client.js';
@@ -18,15 +18,18 @@ export function endpoint<TReq, TRes>(
 	guardReq: TypeGuard<TReq>,
 	guardRes: TypeGuard<TRes>,
 ) {
-	return function (
-		originalFn: (...args: unknown[]) => unknown,
-		context: ClassMethodDecoratorContext,
-	): (...args: unknown[]) => Promise<unknown> {
+	return function <This>(
+		originalFn: (this: This, req: HTTPRequest<TReq>) => Promise<TRes>,
+		context: ClassMethodDecoratorContext<
+			This,
+			(this: This, req: HTTPRequest<TReq>) => Promise<TRes>
+		>,
+	): (this: This, req: HTTPRequest<TReq>) => Promise<TRes> {
 		const methodName = String(context.name);
 
 		// 1. Store metadata in the registry (keyed on the prototype at apply-time).
 		//    We use addInitializer to grab the correct prototype via `this`.
-		context.addInitializer(function (this: unknown) {
+		context.addInitializer(function (this: This) {
 			const proto = Object.getPrototypeOf(this as object) as object;
 			registerEndpoint(proto, methodName, {
 				httpMethod,
@@ -44,16 +47,18 @@ export function endpoint<TReq, TRes>(
 					guardReq: guardReq as TypeGuard<unknown>,
 					guardRes: guardRes as TypeGuard<unknown>,
 					// Bind to this instance so `this` works inside the method.
-					handler: (originalFn as (...args: unknown[]) => unknown).bind(this),
+					handler: originalFn.bind(this) as (...args: unknown[]) => unknown,
 				});
 			}
 		});
 
 		// 2. Return the wrapper that is placed on the prototype.
-		return async function (this: object, ...args: unknown[]): Promise<unknown> {
+		return async function (this: This, req: HTTPRequest<TReq>): Promise<TRes> {
 			const config = getConfig();
 
 			if (config.mode === 'client') {
+				// clientHandler validates the response against guardRes at runtime;
+				// the cast to TRes is safe here.
 				return clientHandler(
 					{
 						httpMethod,
@@ -62,8 +67,8 @@ export function endpoint<TReq, TRes>(
 						guardRes: guardRes as TypeGuard<unknown>,
 					},
 					config.baseUrl,
-					args[0],
-				);
+					req,
+				) as Promise<TRes>;
 			}
 
 			// Server mode: the method should be invoked by the server adapter,

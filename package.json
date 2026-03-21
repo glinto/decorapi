@@ -9,7 +9,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.mjs",
+			"import": {
+				"types": "./dist/index.d.mts",
+				"default": "./dist/index.mjs"
+			},
 			"require": "./dist/index.js"
 		}
 	},
@@ -38,6 +41,7 @@
 		"jest": "^30.3.0",
 		"prettier": "^3.8.1",
 		"ts-jest": "^29.4.6",
+		"tsx": "^4.19.1",
 		"typescript": "^5.8.0",
 		"typescript-eslint": "^8.57.1"
 	},
