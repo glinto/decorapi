@@ -7,20 +7,29 @@ import {
 
 /**
  * Executes a decorated method call on the client side:
- * serialises the request body, fires a fetch, validates the response.
+ * interpolates path parameters into URL, serialises request body, fires a fetch, validates response.
  */
 export async function clientHandler(
 	meta: EndpointMeta,
 	baseUrl: string,
-	requestArg: unknown,
+	requestWithParams: { params: unknown[]; request: unknown },
 ): Promise<unknown> {
+	const { params, request: requestArg } = requestWithParams;
+
 	// Bodyless methods (GET, DELETE) pass optional { headers? }; body methods pass { body, headers }.
 	const isBodyless = meta.guardReq === undefined;
 	const req = requestArg as HTTPRequest<unknown> | RequestOptions | undefined;
 	const body = isBodyless ? undefined : (req as HTTPRequest<unknown>)?.body;
 	const reqHeaders = (req as { headers?: Record<string, string> })?.headers ?? {};
 
-	const url = `${baseUrl.replace(/\/$/, '')}${meta.path}`;
+	// Build URL by interpolating params into pathTemplate
+	let url = meta.pathTemplate;
+	for (let i = 0; i < meta.paramNames.length; i++) {
+		const paramName = meta.paramNames[i];
+		const paramValue = String(params[i] ?? '');
+		url = url.replace(`:${paramName}`, encodeURIComponent(paramValue));
+	}
+	url = `${baseUrl.replace(/\/$/, '')}${url}`;
 
 	const init: RequestInit = {
 		method: meta.httpMethod,

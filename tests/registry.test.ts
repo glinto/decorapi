@@ -5,6 +5,8 @@ import type { EndpointMeta } from '../src/types.js';
 const makeMeta = (path: string): EndpointMeta => ({
 	httpMethod: 'POST',
 	path,
+	pathTemplate: path,
+	paramNames: [],
 	guardReq: (x): x is unknown => true,
 	guardRes: (x): x is unknown => true,
 });

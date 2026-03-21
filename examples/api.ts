@@ -13,6 +13,8 @@ import {
 	type GreetResponse,
 	isHeapStats,
 	type HeapStats,
+	isGroup,
+	type Group,
 } from './types.js';
 
 export class GreetingAPI {
@@ -34,6 +36,17 @@ export class GreetingAPI {
 			totalHeap: stats.total_heap_size,
 			usedHeap: stats.used_heap_size,
 			heapLimit: stats.heap_size_limit,
+		};
+	}
+
+	@endpoint('GET', '/groups/:groupId', isGroup)
+	async getGroup(groupId: string, _opts?: RequestOptions): Promise<Group> {
+		// Parameterized GET endpoint: groupId is extracted from the URL path.
+		// On the client: await api.getGroup('123')
+		// On the server: extracts '123' from /groups/123 and calls this method
+		return {
+			id: groupId,
+			name: `Group ${groupId}`,
 		};
 	}
 }

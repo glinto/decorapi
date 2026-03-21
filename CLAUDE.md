@@ -57,8 +57,8 @@ tests/
   server.test.ts
 
 examples/
-  types.ts        — shared type defs and guards for the greeting + heap examples
-  api.ts          — shared GreetingAPI class (POST /greet, GET /heap)
+  types.ts        — shared type defs and guards for greeting, heap, and group examples
+  api.ts          — shared GreetingAPI class (POST /greet, GET /heap, GET /groups/:groupId)
   server.ts       — http.Server example
   client.ts       — fetch-based client example
 ```
@@ -71,6 +71,11 @@ examples/
 - **`BodylessMethod = 'GET' | 'DELETE'`**, **`BodyMethod = 'POST' | 'PUT' | 'PATCH'`** — used to dispatch the correct decorator overload at the call site
 - **`EndpointMeta.guardReq` is optional** — absent for bodyless endpoints; server skips body reading and validation when it is absent
 - **`RequestOptions`** — the argument type for bodyless decorated methods: `{ headers?: Record<string, string> }`
+- **Path parameters via TypeScript method signature** — path templates like `/users/:id` are parsed to extract param names; parameters are passed as separate typed arguments before the request object
+  - Example bodyless: `async getUser(id: string, opts?: RequestOptions): Promise<User>`
+  - Example body-carrying: `async createPost(groupId: string, req: HTTPRequest<PostBody>): Promise<Post>`
+  - Client calls preserve argument order: `api.getUser('123')`, `api.createPost('456', { body: ... })`
+  - Server routing is regex-based to match patterns; exact-match static paths take precedence
 - **Method replacement**: the decorator returns a wrapper; on `client` mode it calls `clientHandler` (fetch); on `server` mode the server adapter dispatches to the original bound method — the wrapper itself throws if called directly in server mode
 - **`node:http` imports in `server.ts` and `index.ts` are all `import type`** — erased at compile time, safe for client bundling
 - **`packages: 'external'` in esbuild** — no npm dependencies are inlined into the bundle
@@ -121,4 +126,5 @@ No `NPM_TOKEN` secret needed — npm OIDC Trusted Publishing is configured on th
 - `tsconfig.test.json` extends the main tsconfig and adds `esModuleInterop: true` (needed for `import http from 'node:http'` in tests)
 - The `@endpoint` implementation function uses `: any` return type to satisfy TypeScript overload compatibility — do not remove it; the named overloads are what callers see
 - `EndpointMeta.guardReq` is optional — always check `entry.guardReq !== undefined` before calling it in server dispatch code
+- **Path parameters**: The `@endpoint` decorator now supports path templates like `/groups/:groupId/items/:itemId`. Parameters are passed as typed arguments: `async method(groupId: string, itemId: string, req?: HTTPRequest<T>)`. The server routing is regex-based; static paths (no `:param`) are matched first
 - `npm run example:server` + `npm run example:client` require `npm run build` first (examples import from `dist/index.mjs`)

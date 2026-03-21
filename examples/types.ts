@@ -32,3 +32,13 @@ export const isHeapStats = (x: unknown): x is HeapStats => {
 		typeof s?.heapLimit === 'number'
 	);
 };
+
+// ---- Group (parameterized endpoint: GET /groups/:groupId) ----
+
+export interface Group {
+	id: string;
+	name: string;
+}
+
+export const isGroup = (x: unknown): x is Group =>
+	typeof (x as Group)?.id === 'string' && typeof (x as Group)?.name === 'string';

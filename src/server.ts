@@ -1,8 +1,10 @@
 import type { IncomingMessage, ServerResponse, Server } from 'node:http';
-import { DecorAPIError, type EndpointMeta, type HttpMethod } from './types.js';
+import { DecorAPIError, type EndpointMeta, type HttpMethod, pathTemplateToRegex } from './types.js';
 
 interface RouteEntry extends EndpointMeta {
 	handler: (...args: unknown[]) => unknown;
+	/** Compiled regex for matching this route's path template. */
+	pathRegex?: RegExp;
 }
 
 /**
@@ -13,13 +15,16 @@ interface RouteEntry extends EndpointMeta {
  * handler for use with Express / any compatible framework.
  */
 class ServerAdapter {
-	private readonly routes = new Map<string, RouteEntry>();
+	private readonly routes: RouteEntry[] = [];
 	private attachedServer: Server | null = null;
 
 	/** Called by the @endpoint addInitializer when mode === 'server'. */
 	register(entry: RouteEntry): void {
-		const key = routeKey(entry.httpMethod, entry.path);
-		this.routes.set(key, entry);
+		// Ensure pathTemplate is synced with path (for tests that override path)
+		const pathTemplate = entry.path;
+		// Compile regex for route matching
+		const pathRegex = pathTemplateToRegex(pathTemplate);
+		this.routes.push({ ...entry, pathTemplate, pathRegex });
 	}
 
 	/**
@@ -49,14 +54,26 @@ class ServerAdapter {
 		// Strip query string for route matching.
 		const path = url.split('?')[0] ?? url;
 
-		const entry = this.routes.get(routeKey(method, path));
-		if (!entry) {
+		// Find matching route by iterating through entries and matching regex
+		let matchedEntry: RouteEntry | undefined;
+		let pathParams: string[] = [];
+		for (const entry of this.routes) {
+			if (entry.httpMethod !== method) continue;
+			const match = entry.pathRegex?.exec(path);
+			if (match) {
+				matchedEntry = entry;
+				pathParams = match.slice(1); // Capture groups are the params
+				break;
+			}
+		}
+
+		if (!matchedEntry) {
 			// Not a route we own — let the server handle it (or 404).
 			return;
 		}
 
 		let body: unknown;
-		if (entry.guardReq !== undefined) {
+		if (matchedEntry.guardReq !== undefined) {
 			// Body-carrying method: read, parse and validate the JSON body.
 			try {
 				body = await readJson(req);
@@ -65,16 +82,32 @@ class ServerAdapter {
 				return;
 			}
 
-			if (!entry.guardReq(body)) {
+			if (!matchedEntry.guardReq(body)) {
 				sendJson(res, 400, { error: 'Request body failed type validation' });
 				return;
 			}
 		}
 
 		try {
-			const result = await entry.handler({ body, headers: headersToRecord(req) });
+			// Build handler arguments: path params first (if any), then body/options
+			const handlerArgs: unknown[] = [];
 
-			if (!entry.guardRes(result)) {
+			// Only include params if this endpoint has any
+			if (matchedEntry.paramNames.length > 0) {
+				handlerArgs.push(...pathParams);
+			}
+
+			if (matchedEntry.guardReq !== undefined) {
+				// Body-carrying: add HTTPRequest object
+				handlerArgs.push({ body, headers: headersToRecord(req) });
+			} else {
+				// Bodyless: add optional RequestOptions
+				handlerArgs.push({ headers: headersToRecord(req) });
+			}
+
+			const result = await matchedEntry.handler(...handlerArgs);
+
+			if (!matchedEntry.guardRes(result)) {
 				sendJson(res, 500, { error: 'Response failed type validation' });
 				return;
 			}
@@ -91,10 +124,6 @@ class ServerAdapter {
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
-
-function routeKey(method: string, path: string): string {
-	return `${method.toUpperCase()}:${path}`;
-}
 
 function readJson(req: IncomingMessage): Promise<unknown> {
 	return new Promise((resolve, reject) => {

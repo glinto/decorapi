@@ -6,6 +6,7 @@ import type {
 	HTTPRequest,
 	RequestOptions,
 } from './types.js';
+import { extractPathParams } from './types.js';
 import { registerEndpoint } from './registry.js';
 import { getConfig } from './config.js';
 import { clientHandler } from './client.js';
@@ -13,30 +14,30 @@ import { serverAdapter } from './server.js';
 
 /**
  * @endpoint overload for bodyless methods (GET, DELETE).
- * The decorated method receives an optional `{ headers? }` argument.
+ * The decorated method can take any arguments (path params + optional RequestOptions).
  */
 export function endpoint<TRes>(
 	httpMethod: BodylessMethod,
 	path: string,
 	guardRes: TypeGuard<TRes>,
-): <This>(
-	originalFn: (this: This, opts?: RequestOptions) => Promise<TRes>,
-	context: ClassMethodDecoratorContext<This, (this: This, opts?: RequestOptions) => Promise<TRes>>,
-) => (this: This, opts?: RequestOptions) => Promise<TRes>;
+): <This, Args extends unknown[]>(
+	originalFn: (this: This, ...args: Args) => Promise<TRes>,
+	context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Promise<TRes>>,
+) => (this: This, ...args: Args) => Promise<TRes>;
 
 /**
  * @endpoint overload for body-carrying methods (POST, PUT, PATCH).
- * The decorated method receives an `HTTPRequest<TReq>` argument.
+ * The decorated method can take any arguments (path params + HTTPRequest<TReq>).
  */
 export function endpoint<TReq, TRes>(
 	httpMethod: BodyMethod,
 	path: string,
 	guardReq: TypeGuard<TReq>,
 	guardRes: TypeGuard<TRes>,
-): <This>(
-	originalFn: (this: This, req: HTTPRequest<TReq>) => Promise<TRes>,
-	context: ClassMethodDecoratorContext<This, (this: This, req: HTTPRequest<TReq>) => Promise<TRes>>,
-) => (this: This, req: HTTPRequest<TReq>) => Promise<TRes>;
+): <This, Args extends unknown[]>(
+	originalFn: (this: This, ...args: Args) => Promise<TRes>,
+	context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Promise<TRes>>,
+) => (this: This, ...args: Args) => Promise<TRes>;
 
 // Implementation — signature must be a supertype of both overloads.
 // Return type is `any` so TypeScript accepts both overload return shapes;
@@ -60,12 +61,15 @@ export function endpoint<TReq = unknown, TRes = unknown>(
 		>,
 	) {
 		const methodName = String(context.name);
+		const paramNames = extractPathParams(path);
 
 		context.addInitializer(function (this: This) {
 			const proto = Object.getPrototypeOf(this as object) as object;
 			registerEndpoint(proto, methodName, {
 				httpMethod,
 				path,
+				pathTemplate: path,
+				paramNames,
 				guardReq: guardReq as TypeGuard<unknown> | undefined,
 				guardRes: guardRes as TypeGuard<unknown>,
 			});
@@ -76,6 +80,8 @@ export function endpoint<TReq = unknown, TRes = unknown>(
 				serverAdapter.register({
 					httpMethod,
 					path,
+					pathTemplate: path,
+					paramNames,
 					guardReq: guardReq as TypeGuard<unknown> | undefined,
 					guardRes: guardRes as TypeGuard<unknown>,
 					handler: originalFn.bind(this) as (...args: unknown[]) => unknown,
@@ -83,22 +89,28 @@ export function endpoint<TReq = unknown, TRes = unknown>(
 			}
 		});
 
-		return async function (
-			this: This,
-			arg: HTTPRequest<TReq> | RequestOptions | undefined,
-		): Promise<TRes> {
+		return async function (this: This, ...args: unknown[]): Promise<TRes> {
 			const config = getConfig();
 
 			if (config.mode === 'client') {
+				// Extract params (first N args) and request object (last arg)
+				const params = args.slice(0, paramNames.length);
+				const requestArg = args[paramNames.length];
+
 				return clientHandler(
 					{
 						httpMethod,
 						path,
+						pathTemplate: path,
+						paramNames,
 						guardReq: guardReq as TypeGuard<unknown> | undefined,
 						guardRes: guardRes as TypeGuard<unknown>,
 					},
 					config.baseUrl,
-					arg,
+					{
+						params,
+						request: requestArg,
+					},
 				) as Promise<TRes>;
 			}
 

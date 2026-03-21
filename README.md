@@ -67,6 +67,42 @@ export class MyAPI {
 }
 ```
 
+For **path parameters**, use `:param` syntax in the path. Parameters are passed as typed method arguments, in the same order they appear in the path, before the request argument:
+
+```typescript
+import { endpoint, type HTTPRequest, type RequestOptions } from 'decorapi';
+
+export class MyAPI {
+	// GET /users/:id → bodyless with one param
+	@endpoint('GET', '/users/:id', isUser)
+	async getUser(id: string, opts?: RequestOptions): Promise<User> {
+		return findUser(id); // id extracted from URL on server
+	}
+
+	// POST /groups/:groupId/items → body-carrying with one param
+	@endpoint('POST', '/groups/:groupId/items', isItemBody, isItem)
+	async createItem(groupId: string, req: HTTPRequest<ItemBody>): Promise<Item> {
+		return createItem(groupId, req.body);
+	}
+
+	// GET /groups/:groupId/items/:itemId → multiple params
+	@endpoint('GET', '/groups/:groupId/items/:itemId', isItem)
+	async getItem(groupId: string, itemId: string, opts?: RequestOptions): Promise<Item> {
+		return findItem(groupId, itemId);
+	}
+}
+```
+
+Client calls — just pass the values positionally:
+
+```typescript
+const user = await api.getUser('123');
+const item = await api.createItem('456', { body: { name: 'thing' }, headers: {} });
+const specific = await api.getItem('456', '789');
+```
+
+The client interpolates the values into the URL; the server extracts them from the incoming request path using regex matching.
+
 > ⚠️ **Important**: If your method body uses Node.js-only dependencies, use dynamic imports to prevent them from appearing in client bundles. See [Server-only code patterns](#server-only-code-patterns).
 
 ### 3. Client
@@ -253,15 +289,33 @@ Decorated method signature: `(req: HTTPRequest<TReq>) => Promise<TRes>`
 @endpoint(httpMethod, path, guardRes)
 ```
 
-| Parameter    | Type              | Description                          |
-| ------------ | ----------------- | ------------------------------------ |
-| `httpMethod` | `BodylessMethod`  | `'GET' \| 'DELETE'`                  |
-| `path`       | `string`          | Route path, e.g. `'/users'`          |
-| `guardRes`   | `TypeGuard<TRes>` | Validates the outgoing response body |
+| Parameter    | Type              | Description                                   |
+| ------------ | ----------------- | --------------------------------------------- |
+| `httpMethod` | `BodylessMethod`  | `'GET' \| 'DELETE'`                           |
+| `path`       | `string`          | Route path, e.g. `'/users'` or `'/users/:id'` |
+| `guardRes`   | `TypeGuard<TRes>` | Validates the outgoing response body          |
 
-Decorated method signature: `(opts?: RequestOptions) => Promise<TRes>`
+Decorated method signature (no params): `(opts?: RequestOptions) => Promise<TRes>`  
+Decorated method signature (with params): `(p1: string, p2: string, ..., opts?: RequestOptions) => Promise<TRes>`
 
 No request body is read or validated on the server side.
+
+### Path parameters
+
+Use `:paramName` tokens in the `path` argument. The decorator extracts them at decoration time and:
+
+- **Server**: matches incoming requests via regex, extracts values from the URL, and passes them as leading arguments to the handler.
+- **Client**: interpolates the values you pass as leading arguments into the URL before `fetch` is called.
+
+Param names in the path and positional method arguments must match in **count and order**. The types are whatever you declare on the method — TypeScript enforces them at the call site.
+
+```typescript
+// path params → leading string args, then body/opts last
+async method(p1: string, p2: string, req: HTTPRequest<T>): Promise<R>
+async method(p1: string, opts?: RequestOptions): Promise<R>
+```
+
+If two routes could match the same URL (e.g. `/items/admin` and `/items/:id`), register the static path before the dynamic one — routes are matched in registration order.
 
 ### `DecorAPI.configure(config)`
 

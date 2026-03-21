@@ -44,6 +44,12 @@ async function main() {
 		console.log(`    Total heap : ${(heap.totalHeap / 1024 / 1024).toFixed(1)} MB`);
 		console.log(`    Used heap  : ${(heap.usedHeap / 1024 / 1024).toFixed(1)} MB`);
 		console.log(`    Heap limit : ${(heap.heapLimit / 1024 / 1024).toFixed(1)} MB`);
+
+		console.log();
+
+		console.log('→ Calling GET /groups/:groupId with groupId = "abc123" (parameterized route)...');
+		const group = await api.getGroup('abc123');
+		console.log('✓ Group:', group);
 	} catch (error) {
 		console.error('✗ Error:', error);
 		process.exit(1);
