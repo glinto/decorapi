@@ -52,6 +52,21 @@ export class MyAPI {
 }
 ```
 
+For **GET and DELETE** endpoints (no request body), omit `guardReq` — the method takes an optional `RequestOptions` argument instead:
+
+```typescript
+import { endpoint, type RequestOptions } from 'decorapi';
+import { isFooResponse, type FooResponse } from './types.js';
+
+export class MyAPI {
+	@endpoint('GET', '/foo', isFooResponse)
+	async getFoo(opts?: RequestOptions): Promise<FooResponse> {
+		// No body — opts carries optional headers only
+		return { greeting: 'Hello!' };
+	}
+}
+```
+
 > ⚠️ **Important**: If your method body uses Node.js-only dependencies, use dynamic imports to prevent them from appearing in client bundles. See [Server-only code patterns](#server-only-code-patterns).
 
 ### 3. Client
@@ -63,14 +78,21 @@ import { MyAPI } from './api.js';
 DecorAPI.configure({ mode: 'client', baseUrl: 'https://api.example.com' });
 const api = new MyAPI();
 
+// Body-carrying call:
 const result = await api.foo({ body: { name: 'world' }, headers: {} });
 console.log(result.greeting); // "Hello, world!"
+
+// Bodyless call (GET/DELETE) — no argument required:
+const status = await api.getFoo();
+// Or pass custom headers:
+const authed = await api.getFoo({ headers: { Authorization: 'Bearer token' } });
 ```
 
 The client:
 
-- Serialises `body` to JSON and sends it to `POST https://api.example.com/foo`.
-- Validates the response against `isFooResponse`.
+- For POST/PUT/PATCH: serialises `body` to JSON and sends it.
+- For GET/DELETE: sends no body; optional `headers` are forwarded.
+- Validates the response against `guardRes`.
 - Throws `DecorAPIError` on network failure, non-2xx status, or failed validation.
 
 ### 4. Server — raw `http.Server`
@@ -104,10 +126,10 @@ app.listen(3000);
 
 The server adapter:
 
-- Parses the JSON body.
-- Validates it against `isFooRequest` → responds `400` on failure.
-- Calls the original method with `{ body, headers }`.
-- Validates the result against `isFooResponse` → responds `500` on failure.
+- **POST/PUT/PATCH**: parses the JSON body, validates it against `guardReq` → `400` on failure.
+- **GET/DELETE**: skips body reading entirely.
+- Calls the original method.
+- Validates the result against `guardRes` → `500` on failure.
 - Serialises the result and responds `200 application/json`.
 
 ---
@@ -210,16 +232,36 @@ externals: {
 
 ## API reference
 
-### `@endpoint(httpMethod, path, guardReq, guardRes)`
+### `@endpoint` — body-carrying methods (POST, PUT, PATCH)
 
-TC39 Stage-3 method decorator.
+```typescript
+@endpoint(httpMethod, path, guardReq, guardRes)
+```
 
-| Parameter  | Type              | Description                                       |
-| ---------- | ----------------- | ------------------------------------------------- |
-| httpMethod | `HttpMethod`      | `'GET' \| 'POST' \| 'PUT' \| 'PATCH' \| 'DELETE'` |
-| path       | `string`          | Route path, e.g. `'/users'`                       |
-| guardReq   | `TypeGuard<TReq>` | Validates the incoming request body               |
-| guardRes   | `TypeGuard<TRes>` | Validates the outgoing response body              |
+| Parameter    | Type              | Description                          |
+| ------------ | ----------------- | ------------------------------------ |
+| `httpMethod` | `BodyMethod`      | `'POST' \| 'PUT' \| 'PATCH'`         |
+| `path`       | `string`          | Route path, e.g. `'/users'`          |
+| `guardReq`   | `TypeGuard<TReq>` | Validates the incoming request body  |
+| `guardRes`   | `TypeGuard<TRes>` | Validates the outgoing response body |
+
+Decorated method signature: `(req: HTTPRequest<TReq>) => Promise<TRes>`
+
+### `@endpoint` — bodyless methods (GET, DELETE)
+
+```typescript
+@endpoint(httpMethod, path, guardRes)
+```
+
+| Parameter    | Type              | Description                          |
+| ------------ | ----------------- | ------------------------------------ |
+| `httpMethod` | `BodylessMethod`  | `'GET' \| 'DELETE'`                  |
+| `path`       | `string`          | Route path, e.g. `'/users'`          |
+| `guardRes`   | `TypeGuard<TRes>` | Validates the outgoing response body |
+
+Decorated method signature: `(opts?: RequestOptions) => Promise<TRes>`
+
+No request body is read or validated on the server side.
 
 ### `DecorAPI.configure(config)`
 
@@ -242,10 +284,22 @@ Returns a `(req: IncomingMessage, res: ServerResponse) => void` handler for use 
 
 ### `HTTPRequest<T>`
 
+Argument type for body-carrying (POST/PUT/PATCH) decorated methods on the server side:
+
 ```typescript
 interface HTTPRequest<T> {
 	body: T;
 	headers: Record<string, string>;
+}
+```
+
+### `RequestOptions`
+
+Argument type for bodyless (GET/DELETE) decorated methods:
+
+```typescript
+interface RequestOptions {
+	headers?: Record<string, string>;
 }
 ```
 
