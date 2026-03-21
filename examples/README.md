@@ -23,7 +23,7 @@ You should see:
 ```
 ✓ Server running at http://127.0.0.1:3000
   POST /greet – Accepts { name: string }
-  POST /heap  – Returns V8 heap statistics (server-only, uses dynamic import)
+  GET  /heap  – Returns V8 heap statistics (server-only, uses dynamic import)
 ```
 
 ### 3. Run the client (in another terminal)
@@ -38,7 +38,7 @@ You should see something like:
 → Calling POST /greet with { name: "World" }...
 ✓ Response: { greeting: 'Hello, World!' }
 
-→ Calling POST /heap (server uses dynamic import of node:v8 inside the method)...
+→ Calling GET /heap (bodyless; server uses dynamic import of node:v8 inside the method)...
 ✓ Heap stats:
     Total heap : 8.3 MB
     Used heap  : 5.1 MB
@@ -63,23 +63,18 @@ async greet(req: HTTPRequest<GreetRequest>): Promise<GreetResponse>
 
 Plain server logic with no external dependencies.
 
-### Endpoint 2: POST /heap — dynamic import pattern
+### Endpoint 2: GET /heap — dynamic import pattern
 
 ```typescript
-@endpoint('POST', '/heap', isHeapRequest, isHeapStats)
-async heap(_req: HTTPRequest<HeapRequest>): Promise<HeapStats> {
+@endpoint('GET', '/heap', isHeapStats)
+async heap(_opts?: RequestOptions): Promise<HeapStats> {
   const { getHeapStatistics } = await import('node:v8');
   const stats = getHeapStatistics();
   return { totalHeap: stats.total_heap_size, ... };
 }
 ```
 
-`node:v8` only exists in Node.js and would crash a browser/client bundler if statically imported at the top of the file. By importing it **dynamically inside the method body**:
-
-- **Server mode** — the import runs at call-time, works fine.
-- **Client mode** — the decorator replaces the method body with a `fetch` call, so the import line never executes. Bundlers see only a dynamic `import()` inside a dead code path and won't include `node:v8` in the client bundle.
-
-This is the recommended pattern for any server-only dependency (databases, file system, crypto, etc.) in a shared API class.
+GET (and DELETE) endpoints are **bodyless** — they take an optional `RequestOptions` (`{ headers? }`) argument instead of `HTTPRequest<T>`. No request body is read or validated on the server side.
 
 ### Configuration drives the behaviour
 

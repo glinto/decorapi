@@ -1,8 +1,15 @@
 export type TypeGuard<T> = (value: unknown) => value is T;
 
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+export type BodylessMethod = 'GET' | 'DELETE';
+export type BodyMethod = 'POST' | 'PUT' | 'PATCH';
+export type HttpMethod = BodylessMethod | BodyMethod;
 
-/** Shape of the request object passed to a decorated method on the server side. */
+/** Optional headers passed to a GET/DELETE decorated method. */
+export interface RequestOptions {
+	headers?: Record<string, string>;
+}
+
+/** Shape of the request object passed to a POST/PUT/PATCH decorated method on the server side. */
 export interface HTTPRequest<T> {
 	body: T;
 	headers: Record<string, string>;
@@ -12,7 +19,8 @@ export interface HTTPRequest<T> {
 export interface EndpointMeta {
 	httpMethod: HttpMethod;
 	path: string;
-	guardReq: TypeGuard<unknown>;
+	/** Absent for bodyless methods (GET, DELETE). */
+	guardReq?: TypeGuard<unknown>;
 	guardRes: TypeGuard<unknown>;
 }
 

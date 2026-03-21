@@ -47,11 +47,28 @@ describe('clientHandler', () => {
 		const getMeta: EndpointMeta = {
 			...meta,
 			httpMethod: 'GET',
+			guardReq: undefined,
 			guardRes: (x): x is unknown => true,
 		};
 		mockFetch({ ok: true, json: async () => 42 });
 		await clientHandler(getMeta, 'https://api.example.com', undefined);
 		const init = (global.fetch as jest.Mock).mock.calls[0][1] as RequestInit;
+		expect(init.body).toBeUndefined();
+	});
+
+	it('forwards custom headers for GET requests', async () => {
+		const getMeta: EndpointMeta = {
+			...meta,
+			httpMethod: 'GET',
+			guardReq: undefined,
+			guardRes: (x): x is unknown => true,
+		};
+		mockFetch({ ok: true, json: async () => 42 });
+		await clientHandler(getMeta, 'https://api.example.com', {
+			headers: { Authorization: 'Bearer tok' },
+		});
+		const init = (global.fetch as jest.Mock).mock.calls[0][1] as RequestInit;
+		expect((init.headers as Record<string, string>).Authorization).toBe('Bearer tok');
 		expect(init.body).toBeUndefined();
 	});
 

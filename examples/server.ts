@@ -26,7 +26,7 @@ const PORT = 3000;
 server.listen(PORT, '127.0.0.1', () => {
 	console.log(`✓ Server running at http://127.0.0.1:${PORT}`);
 	console.log(`  POST /greet – Accepts { name: string }`);
-	console.log(`  POST /heap  – Returns V8 heap statistics (server-only, uses dynamic import)`);
+	console.log(`  GET  /heap  – Returns V8 heap statistics (server-only, uses dynamic import)`);
 });
 
 // Graceful shutdown on Ctrl+C

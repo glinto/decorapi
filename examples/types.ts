@@ -16,18 +16,13 @@ export const isGreetRequest = (x: unknown): x is GreetRequest =>
 export const isGreetResponse = (x: unknown): x is GreetResponse =>
 	typeof (x as GreetResponse)?.greeting === 'string';
 
-// ---- Heap stats (server-only endpoint) ----
-
-// Empty request body — the endpoint takes no input.
-export interface HeapRequest {}
+// ---- Heap stats (GET /heap, server-only via dynamic import) ----
 
 export interface HeapStats {
 	totalHeap: number;
 	usedHeap: number;
 	heapLimit: number;
 }
-
-export const isHeapRequest = (_x: unknown): _x is HeapRequest => true;
 
 export const isHeapStats = (x: unknown): x is HeapStats => {
 	const s = x as HeapStats;

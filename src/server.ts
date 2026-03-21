@@ -56,16 +56,19 @@ class ServerAdapter {
 		}
 
 		let body: unknown;
-		try {
-			body = await readJson(req);
-		} catch {
-			sendJson(res, 400, { error: 'Invalid JSON body' });
-			return;
-		}
+		if (entry.guardReq !== undefined) {
+			// Body-carrying method: read, parse and validate the JSON body.
+			try {
+				body = await readJson(req);
+			} catch {
+				sendJson(res, 400, { error: 'Invalid JSON body' });
+				return;
+			}
 
-		if (!entry.guardReq(body)) {
-			sendJson(res, 400, { error: 'Request body failed type validation' });
-			return;
+			if (!entry.guardReq(body)) {
+				sendJson(res, 400, { error: 'Request body failed type validation' });
+				return;
+			}
 		}
 
 		try {

@@ -37,9 +37,9 @@ async function main() {
 		// Node.js-only module that would crash any browser/client bundler if it
 		// were statically imported at the top of the shared api.ts file.
 		console.log(
-			'→ Calling POST /heap (server uses dynamic import of node:v8 inside the method)...',
+			'→ Calling GET /heap (bodyless; server uses dynamic import of node:v8 inside the method)...',
 		);
-		const heap = await api.heap({ body: {}, headers: {} });
+		const heap = await api.heap();
 		console.log('✓ Heap stats:');
 		console.log(`    Total heap : ${(heap.totalHeap / 1024 / 1024).toFixed(1)} MB`);
 		console.log(`    Used heap  : ${(heap.usedHeap / 1024 / 1024).toFixed(1)} MB`);

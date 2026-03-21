@@ -5,15 +5,13 @@
  * In server mode, the method body runs as a route handler.
  */
 
-import { endpoint, type HTTPRequest } from '../dist/index.mjs';
+import { endpoint, type HTTPRequest, type RequestOptions } from '../dist/index.mjs';
 import {
 	isGreetRequest,
 	isGreetResponse,
 	type GreetRequest,
 	type GreetResponse,
-	isHeapRequest,
 	isHeapStats,
-	type HeapRequest,
 	type HeapStats,
 } from './types.js';
 
@@ -25,19 +23,11 @@ export class GreetingAPI {
 		return { greeting: `Hello, ${req.body.name}!` };
 	}
 
-	@endpoint('POST', '/heap', isHeapRequest, isHeapStats)
-	async heap(_req: HTTPRequest<HeapRequest>): Promise<HeapStats> {
-		// node:v8 is a Node.js-only module — it only exists on the server.
-		//
-		// Importing it dynamically here is the recommended pattern:
-		//   - Server mode: the import runs at call-time, works fine.
-		//   - Client mode: this method body is never executed (the decorator
-		//     replaces it with a fetch call), so the import never runs and
-		//     bundlers (esbuild, webpack, etc.) won't pull node:v8 into the
-		//     client bundle.
-		//
-		// A static `import v8 from 'node:v8'` at the top of the file would
-		// break any client-side bundler that processes this shared file.
+	@endpoint('GET', '/heap', isHeapStats)
+	async heap(_opts?: RequestOptions): Promise<HeapStats> {
+		// GET endpoint — no request body.
+		// node:v8 is a Node.js-only module — dynamically imported so bundlers
+		// won't include it in client builds (the method body never runs client-side).
 		const { getHeapStatistics } = await import('node:v8');
 		const stats = getHeapStatistics();
 		return {
