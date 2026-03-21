@@ -56,6 +56,8 @@ const isNameBody = (x: unknown): x is NameBody => typeof (x as NameBody)?.name =
 const greetMeta: EndpointMeta = {
 	httpMethod: 'POST',
 	path: '/greet',
+	pathTemplate: '/greet',
+	paramNames: [],
 	guardReq: isNameBody,
 	guardRes: isGreeting,
 };
@@ -170,5 +172,182 @@ describe('ServerAdapter', () => {
 			});
 		});
 		expect(result.status).toBe(404);
+	});
+});
+
+describe('ServerAdapter – bodyless GET endpoint', () => {
+	interface StatusResponse {
+		status: string;
+	}
+	const isStatusResponse = (x: unknown): x is StatusResponse =>
+		typeof (x as StatusResponse)?.status === 'string';
+
+	const statusMeta: EndpointMeta = {
+		httpMethod: 'GET',
+		path: '/status',
+		pathTemplate: '/status',
+		paramNames: [],
+		// guardReq is intentionally absent – this is a bodyless endpoint
+		guardRes: isStatusResponse,
+	};
+
+	let handler: (req: http.IncomingMessage, res: http.ServerResponse) => void;
+
+	beforeAll(() => {
+		serverAdapter.register({
+			...statusMeta,
+			handler: async () => ({ status: 'ok' }),
+		});
+		handler = serverAdapter.createRequestHandler();
+	});
+
+	it('returns 200 without reading a request body', async () => {
+		const { status, body } = await request(handler, { method: 'GET', path: '/status' });
+		expect(status).toBe(200);
+		expect(body).toEqual({ status: 'ok' });
+	});
+
+	it('passes headers to the handler', async () => {
+		serverAdapter.register({
+			...statusMeta,
+			path: '/status-headers',
+			handler: async (arg: unknown) => ({
+				status: (arg as { headers: Record<string, string> }).headers['x-test'] ?? 'missing',
+			}),
+		});
+		const handler2 = serverAdapter.createRequestHandler();
+		// The request helper always sends Content-Type; inject x-test via a lower level request
+		const result = await new Promise<{ status: number; body: unknown }>((resolve, reject) => {
+			const server = http.createServer(handler2);
+			server.listen(0, '127.0.0.1', () => {
+				const addr = server.address() as { port: number };
+				const req = http.request(
+					{
+						hostname: '127.0.0.1',
+						port: addr.port,
+						method: 'GET',
+						path: '/status-headers',
+						headers: { 'x-test': 'hello' },
+					},
+					(res) => {
+						const chunks: Buffer[] = [];
+						res.on('data', (c: Buffer) => chunks.push(c));
+						res.on('end', () => {
+							server.close();
+							resolve({
+								status: res.statusCode ?? 0,
+								body: JSON.parse(Buffer.concat(chunks).toString()),
+							});
+						});
+					},
+				);
+				req.on('error', (e) => {
+					server.close();
+					reject(e);
+				});
+				req.end();
+			});
+		});
+		expect(result.status).toBe(200);
+		expect((result.body as StatusResponse).status).toBe('hello');
+	});
+});
+
+describe('ServerAdapter – parameterized routes', () => {
+	interface ItemResponse {
+		itemId: string;
+	}
+	interface CreateItemBody {
+		name: string;
+	}
+	interface CreateItemResponse {
+		groupId: string;
+		itemId: string;
+	}
+
+	const isItemResponse = (x: unknown): x is ItemResponse =>
+		typeof (x as ItemResponse)?.itemId === 'string';
+	const isCreateItemBody = (x: unknown): x is CreateItemBody =>
+		typeof (x as CreateItemBody)?.name === 'string';
+	const isCreateItemResponse = (x: unknown): x is CreateItemResponse =>
+		typeof (x as CreateItemResponse)?.groupId === 'string' &&
+		typeof (x as CreateItemResponse)?.itemId === 'string';
+
+	let handler: (req: http.IncomingMessage, res: http.ServerResponse) => void;
+
+	beforeAll(() => {
+		// GET /items/:id (single param)
+		serverAdapter.register({
+			httpMethod: 'GET',
+			path: '/items/:id',
+			pathTemplate: '/items/:id',
+			paramNames: ['id'],
+			guardRes: isItemResponse,
+			handler: async (...args: unknown[]) => {
+				const id = args[0] as string;
+				return { itemId: id };
+			},
+		});
+
+		// POST /groups/:groupId/items (single param)
+		serverAdapter.register({
+			httpMethod: 'POST',
+			path: '/groups/:groupId/items',
+			pathTemplate: '/groups/:groupId/items',
+			paramNames: ['groupId'],
+			guardReq: isCreateItemBody,
+			guardRes: isCreateItemResponse,
+			handler: async (...args: unknown[]) => {
+				const groupId = args[0] as string;
+				const req = args[1] as { body: CreateItemBody };
+				return { groupId, itemId: `item-${req.body.name}` };
+			},
+		});
+
+		// GET /groups/:groupId/items/:itemId (multiple params)
+		serverAdapter.register({
+			httpMethod: 'GET',
+			path: '/groups/:groupId/items/:itemId',
+			pathTemplate: '/groups/:groupId/items/:itemId',
+			paramNames: ['groupId', 'itemId'],
+			guardRes: isCreateItemResponse,
+			handler: async (...args: unknown[]) => {
+				const groupId = args[0] as string;
+				const itemId = args[1] as string;
+				return { groupId, itemId };
+			},
+		});
+
+		handler = serverAdapter.createRequestHandler();
+	});
+
+	it('extracts single path param and passes to handler', async () => {
+		const { status, body } = await request(handler, {
+			method: 'GET',
+			path: '/items/123',
+		});
+		expect(status).toBe(200);
+		expect((body as ItemResponse).itemId).toBe('123');
+	});
+
+	it('extracts param for POST with body', async () => {
+		const { status, body } = await request(handler, {
+			method: 'POST',
+			path: '/groups/456/items',
+			body: { name: 'test' },
+		});
+		expect(status).toBe(200);
+		expect((body as CreateItemResponse).groupId).toBe('456');
+		expect((body as CreateItemResponse).itemId).toBe('item-test');
+	});
+
+	it('extracts multiple path params', async () => {
+		const { status, body } = await request(handler, {
+			method: 'GET',
+			path: '/groups/789/items/999',
+		});
+		expect(status).toBe(200);
+		expect((body as CreateItemResponse).groupId).toBe('789');
+		expect((body as CreateItemResponse).itemId).toBe('999');
 	});
 });

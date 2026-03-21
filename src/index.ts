@@ -4,6 +4,9 @@ export { setConfig, getConfig, isConfigured } from './config.js';
 export type {
 	TypeGuard,
 	HttpMethod,
+	BodylessMethod,
+	BodyMethod,
+	RequestOptions,
 	HTTPRequest,
 	EndpointMeta,
 	DecorAPIConfig,
