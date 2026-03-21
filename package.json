@@ -29,6 +29,8 @@
 		"lint:fix": "eslint src --fix",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
+		"example:server": "tsx examples/server.ts",
+		"example:client": "tsx examples/client.ts",
 		"prepublishOnly": "npm run build"
 	},
 	"devDependencies": {
