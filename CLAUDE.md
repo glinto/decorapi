@@ -97,7 +97,7 @@ Flat config (`eslint.config.js`) — plain `export default [...]` array. Do **no
 2. Merge to `main`
 3. `npm version patch|minor|major` — bumps version, commits, creates git tag
 4. `git push && git push --tags` — triggers `release.yml`
-5. Release workflow: build → `npm publish --provenance` via OIDC Trusted Publishing → GitHub Release with auto-generated notes
+5. Release workflow: build → `npm/publish@v2` action (handles OIDC token exchange) with provenance → GitHub Release with auto-generated notes
 
 No `NPM_TOKEN` secret needed — npm OIDC Trusted Publishing is configured on the npm package side.
 

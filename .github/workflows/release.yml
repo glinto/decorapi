@@ -31,7 +31,10 @@ jobs:
         run: npm run build
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        uses: npm/publish@v2
+        with:
+          provenance: true
+          access: public
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
