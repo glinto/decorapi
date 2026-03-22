@@ -20,7 +20,7 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "node build.js && tsc --emitDeclarationOnly --declaration --outDir dist",
+		"build": "node build.js && tsc --emitDeclarationOnly --declaration --outDir dist && node -e \"require('fs').copyFileSync('dist/index.d.ts','dist/index.d.mts')\"",
 		"dev": "node build.js --watch",
 		"typecheck": "tsc --noEmit",
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
@@ -47,7 +47,15 @@
 		"typescript": "^5.8.0",
 		"typescript-eslint": "^8.57.1"
 	},
-	"keywords": [],
+	"keywords": [
+		"universal",
+		"api",
+		"isomorphic",
+		"data contract",
+		"decorator",
+		"http",
+		"wrapper"
+	],
 	"license": "MIT",
 	"author": {
 		"email": "glinto@gmail.com",

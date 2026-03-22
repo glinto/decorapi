@@ -1,5 +1,4 @@
 import esbuild from 'esbuild';
-import { copyFileSync } from 'node:fs';
 
 const watch = process.argv.includes('--watch');
 
@@ -39,8 +38,4 @@ if (watch) {
 		}),
 	]);
 	console.log('Build complete.');
-	// Copy the CJS declaration file as the ESM counterpart so that TypeScript
-	// (moduleResolution: bundler/node16/nodenext) can resolve types when
-	// importing from dist/index.mjs.
-	copyFileSync('dist/index.d.ts', 'dist/index.d.mts');
 }
