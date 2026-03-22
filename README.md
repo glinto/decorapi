@@ -2,9 +2,19 @@
 
 > Decorator-based isomorphic HTTP API wrapper for TypeScript.
 
-Write your API once. The same class works as a **client** (issues `fetch` requests) or as a **server** (registers HTTP route handlers) depending on how you configure it.
+Keep your API contracts unbroken by writing universal API code for both client and server. Use strongly typed API calls on the client side. No third parties, no code generation, just vanilla TypeScript.
 
-Uses **TC39 Stage-3 decorators** (TypeScript 5+, no `experimentalDecorators`).
+```typescript
+@endpoint('POST', '/foo', isFooRequest, isFooResponse)
+async foo(req: HTTPRequest<FooRequest>): Promise<FooResponse> {
+	return { greeting: `Hello, ${req.body.name}!` };
+}
+```
+
+## How it works
+
+- On the server, the decorated endpoint attaches a handler to the HTTP server of your choice.
+- On the client, the decorated method is transparently replaced with a `fetch` call.
 
 ---
 
